@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 
 @Table (name = "pacientes")
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 @Setter
 public class Pacientes {
 
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String nomePas;
