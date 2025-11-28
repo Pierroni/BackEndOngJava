@@ -2,6 +2,7 @@ package com.Caminhar.api.service;
 
 import com.Caminhar.api.DTO.PacientesRequestDTO;
 import com.Caminhar.api.DTO.PacientesResponseDTO;
+import com.Caminhar.api.utils.CpfVerif;
 import com.Caminhar.api.model.Pacientes;
 import com.Caminhar.api.repository.PacientesRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,10 @@ public class PacientesService {
 
     public PacientesResponseDTO criar(PacientesRequestDTO dto){
 
+        if (!CpfVerif.cpfValido(dto.cpf())) {
+            throw new RuntimeException("CPF inválido");
+        }
+
         Pacientes paciente = new Pacientes(dto);
 
         repository.save(paciente);
@@ -39,6 +44,10 @@ public class PacientesService {
 
 
     public PacientesResponseDTO atualizar(Long id, PacientesRequestDTO dto) {
+
+        if (!CpfVerif.cpfValido(dto.cpf())) {
+            throw new RuntimeException("CPF inválido");
+        }
 
         Pacientes paciente = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
