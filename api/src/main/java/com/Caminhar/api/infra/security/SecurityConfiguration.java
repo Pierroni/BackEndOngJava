@@ -34,16 +34,32 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
 
-                        // ROTAS PÚBLICAS
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
 
-                        // ROTAS QUE DEVEM SER ADMIN
-                        .requestMatchers("/pacientes/**").hasRole("ADMIN")
-                        .requestMatchers("/registro-consultas/**").hasRole("ADMIN")
+                        // ============================
+                        // REGRAS DE ACESSO PACIENTES
+                        // ============================
+                        .requestMatchers(HttpMethod.GET, "/pacientes/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/pacientes/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/pacientes/**").hasAnyRole("USER", "ADMIN")
+
+                        // DELETE apenas ADMIN
+                        .requestMatchers(HttpMethod.DELETE, "/pacientes/**").hasRole("ADMIN")
+
+                        // ============================
+                        // REGRAS REGISTRO DE CONSULTAS
+                        // ============================
+                        .requestMatchers(HttpMethod.GET, "/registro-consultas/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/registro-consultas/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/registro-consultas/**").hasAnyRole("USER", "ADMIN")
+
+                        // DELETE apenas ADMIN
+                        .requestMatchers(HttpMethod.DELETE, "/registro-consultas/**").hasRole("ADMIN")
 
                         // TUDO QUE SOBRAR É BLOQUEADO
                         .anyRequest().denyAll()
                 )
+
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -53,6 +69,11 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:5500",
                 "http://127.0.0.1:5500"
 
         ));
