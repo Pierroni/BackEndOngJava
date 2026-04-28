@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, Eye, UserPlus } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, UserPlus, FileText } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -65,127 +72,137 @@ export function Patients({ onViewPatient }: PatientsProps) {
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [deletingPatient, setDeletingPatient] = useState<Patient | null>(null);
+  const [reportPatient, setReportPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ========================================
   // 1. Buscar todos os pacientes do backend
   // ========================================
   async function loadPatients() {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
 
-    const response = await fetch("http://localhost:8080/pacientes", {
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-    });
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
 
-    if (response.status === 403 || response.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      return;
-    }
+      const response = await fetch("http://localhost:8080/pacientes", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`Erro HTTP: ${response.status}`);
-    }
+      if (response.status === 403 || response.status === 401) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+      }
 
-    const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
 
-    // DEBUG: Log completo da resposta
-    console.log("Resposta completa da API:", data);
+      const data = await response.json();
 
-    // VALIDAÇÃO: Garantir que os dados estão corretos
-    if (!Array.isArray(data)) {
-      console.error("Dados retornados não são um array:", data);
-      setPatients([]);
-      return;
-    }
+      // DEBUG: Log completo da resposta
+      console.log("Resposta completa da API:", data);
 
-    // Converter backend → frontend - TESTE TODAS AS POSSIBILIDADES
-    const formatted = data
-      .filter((p: any) => p != null)
-      .map((p: any) => {
-        // DEBUG: Verifique todos os campos do paciente
-        console.log("Processando paciente ID:", p.id);
-        console.log("Campos disponíveis:", Object.keys(p));
-        
-        // Tente encontrar o nome em diferentes campos possíveis
-        let nome = "";
-        const camposPossiveis = [
-          'nomePas', 'nomepas', 'nome', 'Nome', 
-          'nomePaciente', 'nomepaciente', 'NOME',
-          'nome_completo', 'nomeCompleto'
-        ];
-        
-        for (const campo of camposPossiveis) {
-          if (p[campo] && typeof p[campo] === 'string') {
-            nome = p[campo];
-            console.log(`Nome encontrado no campo "${campo}":`, nome);
-            break;
-          }
-        }
-        
-        // Se não encontrou, mostre todos os valores string
-        if (!nome) {
-          console.log("Nome não encontrado. Valores string disponíveis:");
-          Object.entries(p).forEach(([key, value]) => {
-            if (typeof value === 'string' && value.trim().length > 0) {
-              console.log(`  ${key}: ${value}`);
+      // VALIDAÇÃO: Garantir que os dados estão corretos
+      if (!Array.isArray(data)) {
+        console.error("Dados retornados não são um array:", data);
+        setPatients([]);
+        return;
+      }
+
+      // Converter backend → frontend - TESTE TODAS AS POSSIBILIDADES
+      const formatted = data
+        .filter((p: any) => p != null)
+        .map((p: any) => {
+          // DEBUG: Verifique todos os campos do paciente
+          console.log("Processando paciente ID:", p.id);
+          console.log("Campos disponíveis:", Object.keys(p));
+
+          // Tente encontrar o nome em diferentes campos possíveis
+          let nome = "";
+          const camposPossiveis = [
+            "nomePas",
+            "nomepas",
+            "nome",
+            "Nome",
+            "nomePaciente",
+            "nomepaciente",
+            "NOME",
+            "nome_completo",
+            "nomeCompleto",
+          ];
+
+          for (const campo of camposPossiveis) {
+            if (p[campo] && typeof p[campo] === "string") {
+              nome = p[campo];
+              console.log(`Nome encontrado no campo "${campo}":`, nome);
+              break;
             }
-          });
-        }
+          }
 
-        return {
-          id: Number(p.id) || 0,
-          name: nome.trim() || "Nome não informado",
-          cpf: String(p.cpf || "").trim(),
-          birthDate: p.dataNascimento || "",
-          age: p.dataNascimento ? calculateAge(p.dataNascimento) : 0,
-          phone: String(p.telefone || "").trim(),
-          cep: String(p.cep || "").trim(),
-          address: String(p.endereco || "").trim(),
-          observations: String(p.observacoes || "").trim(),
-          deceased: Boolean(p.obito || false),
-        };
-      })
-      .filter(p => p.id > 0);
+          // Se não encontrou, mostre todos os valores string
+          if (!nome) {
+            console.log("Nome não encontrado. Valores string disponíveis:");
+            Object.entries(p).forEach(([key, value]) => {
+              if (typeof value === "string" && value.trim().length > 0) {
+                console.log(`  ${key}: ${value}`);
+              }
+            });
+          }
 
-    console.log("Pacientes formatados:", formatted);
-    setPatients(formatted);
-  } catch (err) {
-    console.error("Erro ao carregar pacientes:", err);
-    toast.error("Falha ao carregar pacientes");
-    setPatients([]);
-  } finally {
-    setLoading(false);
+          return {
+            id: Number(p.id) || 0,
+            name: nome.trim() || "Nome não informado",
+            cpf: String(p.cpf || "").trim(),
+            birthDate: p.dataNascimento || "",
+            age: p.dataNascimento ? calculateAge(p.dataNascimento) : 0,
+            phone: String(p.telefone || "").trim(),
+            cep: String(p.cep || "").trim(),
+            address: String(p.endereco || "").trim(),
+            observations: String(p.observacoes || "").trim(),
+            deceased: Boolean(p.obito || false),
+          };
+        })
+        .filter((p) => p.id > 0);
+
+      console.log("Pacientes formatados:", formatted);
+      setPatients(formatted);
+    } catch (err) {
+      console.error("Erro ao carregar pacientes:", err);
+      toast.error("Falha ao carregar pacientes");
+      setPatients([]);
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   // Função para calcular idade
   const calculateAge = (birthDate: string) => {
     try {
       if (!birthDate) return 0;
-      
+
       const today = new Date();
       const birth = new Date(birthDate);
-      
+
       if (isNaN(birth.getTime())) return 0;
-      
+
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birth.getDate())
+      ) {
         age--;
       }
-      
+
       return age;
     } catch (err) {
       return 0;
@@ -225,17 +242,20 @@ export function Patients({ onViewPatient }: PatientsProps) {
       console.log("Payload enviado para API:", payload);
 
       let response;
-      
+
       if (editingPatient) {
         // UPDATE
-        response = await fetch(`http://localhost:8080/pacientes/${editingPatient.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+        response = await fetch(
+          `http://localhost:8080/pacientes/${editingPatient.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
           },
-          body: JSON.stringify(payload),
-        });
+        );
       } else {
         // CREATE
         response = await fetch("http://localhost:8080/pacientes", {
@@ -263,15 +283,18 @@ export function Patients({ onViewPatient }: PatientsProps) {
       const result = await response.json();
       console.log("Resposta da API:", result);
 
-      toast.success(editingPatient ? "Paciente atualizado!" : "Paciente cadastrado!");
-      
+      toast.success(
+        editingPatient ? "Paciente atualizado!" : "Paciente cadastrado!",
+      );
+
       setShowPatientForm(false);
       setEditingPatient(null);
       loadPatients(); // Recarrega a lista
-      
     } catch (err) {
       console.error("Erro ao salvar paciente:", err);
-      toast.error("Erro ao salvar paciente. Verifique o console para detalhes.");
+      toast.error(
+        "Erro ao salvar paciente. Verifique o console para detalhes.",
+      );
     }
   }
 
@@ -286,13 +309,16 @@ export function Patients({ onViewPatient }: PatientsProps) {
         return;
       }
 
-      const response = await fetch(`http://localhost:8080/pacientes/${deletingPatient?.id}`, {
-        method: "DELETE",
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+      const response = await fetch(
+        `http://localhost:8080/pacientes/${deletingPatient?.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (response.status === 403 || response.status === 401) {
         localStorage.removeItem("token");
@@ -318,28 +344,27 @@ export function Patients({ onViewPatient }: PatientsProps) {
   // ========================================
   const filteredPatients = patients.filter((patient) => {
     if (!patient) return false;
-    
+
     const name = String(patient?.name || "").toLowerCase();
     const cpf = String(patient?.cpf || "");
     const age = Number(patient?.age || 0);
     const deceased = Boolean(patient?.deceased || false);
     const searchLower = String(searchQuery || "").toLowerCase();
-    
-    const matchesSearch = 
-      name.includes(searchLower) || 
-      cpf.includes(searchQuery);
-    
+
+    const matchesSearch =
+      name.includes(searchLower) || cpf.includes(searchQuery);
+
     const matchesDeceased =
       deceasedFilter === "all" ||
       (deceasedFilter === "yes" && deceased) ||
       (deceasedFilter === "no" && !deceased);
-    
+
     let matchesAge = true;
     if (ageFilter === "0-18") matchesAge = age < 18;
     else if (ageFilter === "18-40") matchesAge = age >= 18 && age <= 40;
     else if (ageFilter === "40-60") matchesAge = age > 40 && age <= 60;
     else if (ageFilter === "60+") matchesAge = age > 60;
-    
+
     return matchesSearch && matchesDeceased && matchesAge;
   });
 
@@ -363,7 +388,9 @@ export function Patients({ onViewPatient }: PatientsProps) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Gerenciamento de Pacientes</h1>
-          <p className="text-muted-foreground">Gerencie todos os pacientes cadastrados</p>
+          <p className="text-muted-foreground">
+            Gerencie todos os pacientes cadastrados
+          </p>
         </div>
         <Button onClick={() => setShowPatientForm(true)}>
           <Plus className="mr-2 size-4" />
@@ -427,7 +454,7 @@ export function Patients({ onViewPatient }: PatientsProps) {
             {filteredPatients.map((patient) => {
               const name = String(patient?.name || "Sem nome");
               const initials = name.charAt(0).toUpperCase() || "?";
-              
+
               return (
                 <TableRow key={patient.id || Math.random()}>
                   <TableCell>
@@ -449,22 +476,28 @@ export function Patients({ onViewPatient }: PatientsProps) {
                   <TableCell>{patient.cep || "Não informado"}</TableCell>
 
                   <TableCell>
-                    <Badge variant={patient.deceased ? "destructive" : "default"}>
+                    <Badge
+                      variant={patient.deceased ? "destructive" : "default"}
+                    >
                       {patient.deceased ? "Óbito" : "Ativo"}
                     </Badge>
                   </TableCell>
 
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => {
-                          console.log("Botão editar clicado para paciente:", patient.id, patient.name);
+                          console.log(
+                            "Botão editar clicado para paciente:",
+                            patient.id,
+                            patient.name,
+                          );
                           setEditingPatient(patient);
                           setShowPatientForm(true);
                         }}
+                        title="Editar paciente"
                       >
                         <Edit className="size-4" />
                       </Button>
@@ -472,11 +505,20 @@ export function Patients({ onViewPatient }: PatientsProps) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setReportPatient(patient)}
+                        title="Ver relatório"
+                      >
+                        <FileText className="size-4" />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setDeletingPatient(patient)}
+                        title="Deletar paciente"
                       >
                         <Trash2 className="size-4 text-destructive" />
                       </Button>
-
                     </div>
                   </TableCell>
                 </TableRow>
@@ -487,12 +529,94 @@ export function Patients({ onViewPatient }: PatientsProps) {
 
         {filteredPatients.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">
-            {patients.length === 0 
-              ? "Nenhum paciente cadastrado" 
+            {patients.length === 0
+              ? "Nenhum paciente cadastrado"
               : "Nenhum paciente encontrado com os filtros atuais"}
           </div>
         )}
       </div>
+
+      {/* DIALOG RELATÓRIO */}
+      <Dialog open={!!reportPatient} onOpenChange={(open) => !open && setReportPatient(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Relatório do Paciente</DialogTitle>
+            <DialogDescription>
+              Informações completas de {reportPatient?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {reportPatient && (
+            <div className="space-y-6">
+              {/* Dados Pessoais */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Dados Pessoais</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Nome</p>
+                    <p className="font-medium">{reportPatient.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">CPF</p>
+                    <p className="font-medium font-mono">{reportPatient.cpf || "Não informado"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data de Nascimento</p>
+                    <p className="font-medium">
+                      {reportPatient.birthDate
+                        ? new Date(reportPatient.birthDate).toLocaleDateString("pt-BR")
+                        : "Não informado"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Idade</p>
+                    <p className="font-medium">{reportPatient.age || 0} anos</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contato */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Contato</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Telefone</p>
+                    <p className="font-medium">{reportPatient.phone || "Não informado"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">CEP</p>
+                    <p className="font-medium">{reportPatient.cep || "Não informado"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endereço */}
+              {reportPatient.address && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Endereço</h3>
+                  <p className="text-sm">{reportPatient.address}</p>
+                </div>
+              )}
+
+              {/* Observações */}
+              {reportPatient.observations && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Observações</h3>
+                  <p className="text-sm bg-muted p-4 rounded-md">{reportPatient.observations}</p>
+                </div>
+              )}
+
+              {/* Status */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Status</h3>
+                <Badge variant={reportPatient.deceased ? "destructive" : "default"}>
+                  {reportPatient.deceased ? "Óbito" : "Ativo"}
+                </Badge>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* FORM */}
       {showPatientForm && (
@@ -516,7 +640,8 @@ export function Patients({ onViewPatient }: PatientsProps) {
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
               Deseja excluir o paciente{" "}
-              <strong>{deletingPatient?.name || "este paciente"}</strong>? Esta ação é permanente.
+              <strong>{deletingPatient?.name || "este paciente"}</strong>? Esta
+              ação é permanente.
             </AlertDialogDescription>
           </AlertDialogHeader>
 

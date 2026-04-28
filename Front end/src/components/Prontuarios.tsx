@@ -49,8 +49,11 @@ export function Prontuarios() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [showProntuarioForm, setShowProntuarioForm] = useState(false);
-  const [editingProntuario, setEditingProntuario] = useState<Prontuario | null>(null);
-  const [deletingProntuario, setDeletingProntuario] = useState<Prontuario | null>(null);
+  const [editingProntuario, setEditingProntuario] = useState<Prontuario | null>(
+    null,
+  );
+  const [deletingProntuario, setDeletingProntuario] =
+    useState<Prontuario | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Verificar autenticação
@@ -68,7 +71,7 @@ export function Prontuarios() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      
+
       if (!token) {
         window.location.href = "/login";
         return;
@@ -76,9 +79,9 @@ export function Prontuarios() {
 
       // URL da sua API para RegistroConsultas
       const response = await fetch("http://localhost:8080/registro-consultas", {
-        headers: { 
+        headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
       });
 
@@ -93,28 +96,29 @@ export function Prontuarios() {
         throw new Error(`Erro HTTP: ${response.status} - ${errorText}`);
       }
 
-      // CORREÇÃO: Renomeie para evitar conflito de nomes
+      //
       const responseData = await response.json();
       console.log("Dados da API RegistroConsultas:", responseData);
 
       // Converter backend → frontend conforme sua entidade
-      const formatted = Array.isArray(responseData) ? responseData
-        .filter((item: any) => item != null)
-        .map((item: any) => ({
-          id: Number(item.id) || 0,
-          consulta: item.consulta || "",
-          sintomas: item.sintomas || "",
-          diagnostico: item.diagnostico || "",
-          exames: item.exames || "",
-          dataRegistro: item.dataRegistro || item.dataConsulta || "",
-          // Se sua API retornar dados do paciente junto
-          paciente: item.paciente || null,
-        }))
-        .filter(p => p.id > 0) : [];
+      const formatted = Array.isArray(responseData)
+        ? responseData
+            .filter((item: any) => item != null)
+            .map((item: any) => ({
+              id: Number(item.id) || 0,
+              consulta: item.consulta || "",
+              sintomas: item.sintomas || "",
+              diagnostico: item.diagnostico || "",
+              exames: item.exames || "",
+              dataRegistro: item.dataRegistro || item.dataConsulta || "",
+              // Se sua API retornar dados do paciente junto
+              paciente: item.paciente || null,
+            }))
+            .filter((p) => p.id > 0)
+        : [];
 
       console.log("Prontuários formatados:", formatted);
       setProntuarios(formatted);
-
     } catch (err: any) {
       console.error("Erro ao carregar registros:", err);
       toast.error(err.message || "Falha ao carregar registros de consultas");
@@ -147,14 +151,17 @@ export function Prontuarios() {
         sintomas: prontuarioData.sintomas || "",
         diagnostico: prontuarioData.diagnostico || "",
         exames: prontuarioData.exames || "",
-        dataRegistro: prontuarioData.dataRegistro || prontuarioData.dataConsulta || new Date().toISOString().split('T')[0],
+        dataRegistro:
+          prontuarioData.dataRegistro ||
+          prontuarioData.dataConsulta ||
+          new Date().toISOString().split("T")[0],
       };
 
       console.log("Payload enviado para API:", payload);
 
       let response;
       let url = "http://localhost:8080/registro-consultas";
-      
+
       if (editingProntuario) {
         // UPDATE
         url = `http://localhost:8080/registro-consultas/${editingProntuario.id}`;
@@ -193,12 +200,13 @@ export function Prontuarios() {
       const result = await response.json();
       console.log("Resposta da API:", result);
 
-      toast.success(editingProntuario ? "Registro atualizado!" : "Registro criado!");
-      
+      toast.success(
+        editingProntuario ? "Registro atualizado!" : "Registro criado!",
+      );
+
       setShowProntuarioForm(false);
       setEditingProntuario(null);
       loadProntuarios(); // Recarrega a lista
-      
     } catch (err: any) {
       console.error("Erro ao salvar registro:", err);
       toast.error(err.message || "Erro ao salvar registro");
@@ -216,13 +224,16 @@ export function Prontuarios() {
         return;
       }
 
-      const response = await fetch(`http://localhost:8080/registro-consultas/${deletingProntuario?.id}`, {
-        method: "DELETE",
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
+      const response = await fetch(
+        `http://localhost:8080/registro-consultas/${deletingProntuario?.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (response.status === 403 || response.status === 401) {
         localStorage.removeItem("token");
@@ -267,6 +278,14 @@ export function Prontuarios() {
       const monthAgo = new Date();
       monthAgo.setMonth(monthAgo.getMonth() - 1);
       matchesDate = new Date(prontuario.dataRegistro) >= monthAgo;
+    } else if (dateFilter === "sixMonths") {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      matchesDate = new Date(prontuario.dataRegistro) >= sixMonthsAgo;
+    } else if (dateFilter === "year") {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      matchesDate = new Date(prontuario.dataRegistro) >= oneYearAgo;
     }
 
     return matchesSearch && matchesDate;
@@ -276,9 +295,10 @@ export function Prontuarios() {
   const formatExames = (examesString: string) => {
     if (!examesString) return [];
     // Tenta dividir por vírgula, ponto e vírgula ou nova linha
-    return examesString.split(/[,;\n]/)
-      .map(exame => exame.trim())
-      .filter(exame => exame.length > 0);
+    return examesString
+      .split(/[,;\n]/)
+      .map((exame) => exame.trim())
+      .filter((exame) => exame.length > 0);
   };
 
   // ========================================
@@ -353,7 +373,7 @@ export function Prontuarios() {
           <TableBody>
             {filteredProntuarios.map((prontuario) => {
               const examesArray = formatExames(prontuario.exames);
-              
+
               return (
                 <TableRow key={prontuario.id}>
                   <TableCell className="font-mono text-sm">
@@ -396,15 +416,16 @@ export function Prontuarios() {
                   <TableCell>
                     <div>
                       <p className="text-sm">
-                        {prontuario.dataRegistro 
-                          ? new Date(prontuario.dataRegistro).toLocaleDateString("pt-BR")
+                        {prontuario.dataRegistro
+                          ? new Date(
+                              prontuario.dataRegistro,
+                            ).toLocaleDateString("pt-BR")
                           : "Não informada"}
-                    </p>
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      
                       <Button
                         variant="ghost"
                         size="icon"
@@ -433,23 +454,23 @@ export function Prontuarios() {
         </Table>
 
         {showProntuarioForm && (
-  <ProntuarioForm
-    prontuario={editingProntuario}
-    onSave={handleSaveProntuario}
-    onClose={() => {
-      setShowProntuarioForm(false);
-      setEditingProntuario(null);
-    }}
-  />
-)}
+          <ProntuarioForm
+            prontuario={editingProntuario}
+            onSave={handleSaveProntuario}
+            onClose={() => {
+              setShowProntuarioForm(false);
+              setEditingProntuario(null);
+            }}
+          />
+        )}
 
         {filteredProntuarios.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">
             <FileText className="size-12 mx-auto mb-2 opacity-50" />
             <p>Nenhum registro encontrado</p>
             {prontuarios.length === 0 && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-4"
                 onClick={loadProntuarios}
               >
@@ -460,7 +481,6 @@ export function Prontuarios() {
         )}
       </div>
 
-
       {/* Delete Confirmation */}
       <AlertDialog
         open={!!deletingProntuario}
@@ -470,9 +490,10 @@ export function Prontuarios() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o registro #{deletingProntuario?.id}{" "}
-              de consulta <strong>"{deletingProntuario?.consulta}"</strong>? Esta
-              ação não pode ser desfeita.
+              Tem certeza que deseja excluir o registro #
+              {deletingProntuario?.id} de consulta{" "}
+              <strong>"{deletingProntuario?.consulta}"</strong>? Esta ação não
+              pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
