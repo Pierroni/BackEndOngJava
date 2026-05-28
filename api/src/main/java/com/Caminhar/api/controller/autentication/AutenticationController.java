@@ -1,8 +1,8 @@
 package com.Caminhar.api.controller.autentication;
 
 import com.Caminhar.api.infra.tokenService.TokenService;
-import com.Caminhar.api.model.user.AutenticationDTO;
-import com.Caminhar.api.model.user.RegisterDTO;
+import com.Caminhar.api.DTO.AutenticationDTO;
+import com.Caminhar.api.DTO.RegisterDTO;
 import com.Caminhar.api.model.user.User;
 import com.Caminhar.api.repository.UserRepository;
 import com.Caminhar.api.service.login.LoginResponseDTO;
